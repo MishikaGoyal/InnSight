@@ -1,14 +1,18 @@
 from flask import Flask, request, jsonify
-from werkzeug.utils import secure_filename
 from flask_cors import CORS
 import google.generativeai as genai
 from dotenv import load_dotenv
 import os
-from functions import gemini_pro_response
+from functions import gemini_pro_response, suggest_optimal_price
+import pandas as pd
+import numpy as np
+import xgboost as xgb
+from sklearn.preprocessing import StandardScaler
+import joblib 
 
 app = Flask(__name__)
 CORS(app)
-
+####################################################################################################################
 load_dotenv()
 api_key = os.getenv("api_key")
 genai.configure(api_key=api_key)
@@ -45,6 +49,37 @@ def campaign():
     ideas = gemini_pro_response(prompt)
 
     return jsonify(ideas)
+##############################################################################################################################
+# Load the model and scaler
+model = joblib.load('model/xgboost_model.joblib')
+scaler = joblib.load('model/scaler.joblib')
 
+@app.route('/predict', methods=['POST'])
+def predict():
+    data = request.json
+    base_price = data.get('base_price', 150)  # Default base price
+    lead_time = data.get('lead_time', 0)
+    arrival_date_month = data.get('arrival_date_month', 0)  # Numerical code
+    arrival_date_week_number = data.get('arrival_date_week_number', 1)
+    arrival_date_day_of_month = data.get('arrival_date_day_of_month', 1)
+    adults = data.get('adults', 1)
+    children = data.get('children', 0)
+    total_of_special_requests = data.get('total_of_special_requests', 0)
+
+    features = {
+        'lead_time': lead_time,
+        'arrival_date_month': arrival_date_month,
+        'arrival_date_week_number': arrival_date_week_number,
+        'arrival_date_day_of_month': arrival_date_day_of_month,
+        'adults': adults,
+        'children': children,
+        'total_of_special_requests': total_of_special_requests,
+        'adr': base_price
+    }
+
+    optimal_price_suggestions = suggest_optimal_price(base_price, features)
+
+    return jsonify(optimal_price_suggestions)
+##############################################################################################################################
 if __name__ == '__main__':
     app.run(debug=True)

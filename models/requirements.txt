@@ -1,0 +1,9 @@
+pandas 
+scikit-learn 
+xgboost 
+matplotlib 
+seaborn
+google.generativeai
+flask
+flask_cors
+joblib
