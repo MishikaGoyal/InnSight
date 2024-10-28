@@ -1,0 +1,169 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+  
+model Hotel {
+  hotelId        String      @id @default(uuid())
+  name           String
+  location       String
+  contactEmail   String
+  contactPhone   String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  roomTypes      RoomType[]
+  guests         Guest[]
+  bookings       Booking[]
+  campaigns      Campaign[]
+  feedbacks      Feedback[]
+  occupancyRates Occupancy[]
+  dynamicPricingHistory DynamicPricingHistory[]
+  revenueOptimizations RevenueOptimization[]
+}
+
+model RoomType {
+  roomTypeId     String      @id @default(uuid())
+  hotelId        String
+  hotel          Hotel       @relation(fields: [hotelId], references: [hotelId])
+  name           String
+  description    String?
+  basePrice      Float       // Price set to achieve EBITDA+
+  currentPrice   Float?      // Current price (may be different from base price) Ideally set by AI
+  amenities      String[]    // Array of amenities available
+  totalRooms     Int         // Total number of rooms of this type
+  createdAt      DateTime    @default(now())
+  rooms          Room[]
+  bookings       Booking[]
+  occupancyRates Occupancy[]
+  dynamicPricingHistory DynamicPricingHistory[]
+  feedbacks      Feedback[]
+  revenueOptimizations RevenueOptimization[]
+}
+
+model Room {
+  roomId         String      @id @default(uuid())
+  roomTypeId     String
+  roomType       RoomType    @relation(fields: [roomTypeId], references: [roomTypeId])
+  roomNumber     String
+  createdAt      DateTime    @default(now())
+  bookings       Booking[]
+}
+
+model UserSegment {
+  segmentId      String      @id @default(uuid())
+  name           String      // Segment name, e.g., "Business Traveler"
+  description    String?
+  guests         Guest[]
+  campaigns      Campaign[]
+}
+
+model Guest {
+  guestId        String      @id @default(uuid())
+  hotelId        String
+  hotel          Hotel       @relation(fields: [hotelId], references: [hotelId])
+  name           String
+  age            Int?
+  location       String?
+  email          String
+  phone          String?
+  bookings       Booking[]
+  feedbacks      Feedback[]
+  userSegments   UserSegment[]
+}
+
+model Booking {
+  bookingId      String      @id @default(uuid())
+  hotelId        String
+  hotel          Hotel       @relation(fields: [hotelId], references: [hotelId])
+  roomId         String
+  room           Room        @relation(fields: [roomId], references: [roomId])
+  guestId        String
+  guest          Guest       @relation(fields: [guestId], references: [guestId])
+  date           DateTime    // Separate entry per booked date
+  price          Float       // Booking price (may be different from base price)
+  roomTypeId     String
+  roomType       RoomType    @relation(fields: [roomTypeId], references: [roomTypeId])
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model CampaignPlatform {
+  platformId     String      @id @default(uuid())
+  name           String      // Platform name, e.g., MetaAds, GoogleAds
+  campaigns      Campaign[]
+}
+
+model Campaign {
+  campaignId     String      @id @default(uuid())
+  hotelId        String
+  hotel          Hotel       @relation(fields: [hotelId], references: [hotelId])
+  platformId     String
+  platform       CampaignPlatform @relation(fields: [platformId], references: [platformId])
+  targetSegmentId String?
+  targetSegment  UserSegment? @relation(fields: [targetSegmentId], references: [segmentId])
+  startDate      DateTime
+  endDate        DateTime
+  budget         Float
+  clickRate      Float?
+  conversionRate Float?
+  contentText    String?
+  contentImage   String?
+}
+
+model Occupancy {
+  occupancyId    String      @id @default(uuid())
+  hotelId        String
+  hotel          Hotel       @relation(fields: [hotelId], references: [hotelId])
+  roomTypeId     String
+  roomType       RoomType    @relation(fields: [roomTypeId], references: [roomTypeId])
+  date           DateTime
+  totalAvailable Int         // Total rooms available of this type for the date
+  totalBooked    Int         // Total rooms booked of this type for the date
+}
+
+model RevenueOptimization {
+  optimizationId String      @id @default(uuid())
+  hotelId        String
+  hotel          Hotel       @relation(fields: [hotelId], references: [hotelId])
+  roomTypeId     String
+  roomType       RoomType    @relation(fields: [roomTypeId], references: [roomTypeId])
+  date           DateTime
+  basePrice      Float       // Room base price
+  bookingPrice   Float       // Actual booking price
+}
+
+model Feedback {
+  feedbackId     String      @id @default(uuid())
+  hotelId        String
+  hotel          Hotel       @relation(fields: [hotelId], references: [hotelId])
+  roomTypeId     String
+  roomType       RoomType    @relation(fields: [roomTypeId], references: [roomTypeId])
+  guestId        String
+  guest          Guest       @relation(fields: [guestId], references: [guestId])
+  rating         Int         // Rating 1-5
+  comments       String?
+  photos         String[]    @default([])
+  createdAt      DateTime    @default(now())
+}
+
+model DynamicPricingHistory {
+  pricingId      String      @id @default(uuid())
+  hotelId        String
+  hotel          Hotel       @relation(fields: [hotelId], references: [hotelId])
+  roomTypeId     String
+  roomType       RoomType    @relation(fields: [roomTypeId], references: [roomTypeId])
+  date           DateTime
+  recommendedPrice Float     // AI-generated dynamic price suggestion
+  reason         String?     // e.g., "High demand due to event"
+  createdAt      DateTime    @default(now())
+}
