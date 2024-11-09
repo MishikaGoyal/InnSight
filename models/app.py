@@ -50,7 +50,6 @@ def campaign():
 
     return jsonify(ideas)
 ##############################################################################################################################
-# Load the model and scaler
 model = joblib.load('model/xgboost_model.joblib')
 scaler = joblib.load('model/scaler.joblib')
 
